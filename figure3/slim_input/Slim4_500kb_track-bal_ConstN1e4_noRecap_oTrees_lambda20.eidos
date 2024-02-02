@@ -1,0 +1,69 @@
+// lambda==20
+
+initialize() { 
+    initializeTreeSeq();
+	initializeMutationRate(2.5e-7);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+    initializeMutationType("m2", var_h , "f", var_s*20 );
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 499999);
+    initializeRecombinationRate(2e-7);
+}
+
+1 late() { 
+	defineConstant("simID", getSeed()); // get seed in case of re-run
+	sim.addSubpop("p1", 500); 
+}
+
+
+// end of burn-in, record state, introduce mutation
+
+5000 late() {
+    // save the state of the simulation
+    sim.outputFull("slim_temp" + simID + ".txt");
+
+    // introduce mutation at the center
+    target = sample(p1.genomes, 1);
+    target.addNewDrawnMutation(m2, 250000);
+    sim.outputMutations(sim.mutationsOfType(m2));   
+}
+
+// restart whenever it's lost or fixed
+// selection persist for 4*2Ne=4000 gen
+5001:9000 late() {
+	// check for fixation
+	fixed = (sum(sim.substitutions.mutationType == m2) == 1);
+
+    if (sim.countOfMutationsOfType(m2) == 0){
+        sim.outputMutations(sim.mutationsOfType(m2));
+    	if (fixed){
+	    	cat("Mutation fixed at generation " + sim.cycle + ". Writing output and terminating simulation.\n");
+    	} else{
+	    	cat("Mutation lost at generation " + sim.cycle + ". Writing output and terminating simulation.\n");
+    	}
+			
+    	// if not fixed, then lost, restart
+        sim.outputMutations(sim.mutationsOfType(m2));
+        sim.readFromPopulationFile("slim_temp" + simID + ".txt");
+
+        setSeed(getSeed() + 1);
+        cat("Mutation lost. Restarting simulation with seed "+ getSeed() +"\n");
+        target = sample(p1.genomes, 1);
+        target.addNewDrawnMutation(m2, 250000);
+    } 
+    // if not monomorphic, output frequency
+    else {
+        sim.outputMutations(sim.mutationsOfType(m2));
+    }
+
+}
+
+// 4*2Ne gen later, write output
+9000 late(){
+	    // write out trees
+	    cat('Writing trees to'+ "./500kb_" + var_cond + "_ConstN/trees/" + var_cond + "_ConstN_rep"+ var_rep + ".trees" +'\n');
+	    sim.treeSeqOutput("./500kb_" + var_cond + "_ConstN/trees/" + var_cond + "_ConstN_rep"+ var_rep + ".trees");
+
+	    // output MS samples
+		p1.outputMSSample(sample_size) ;
+}

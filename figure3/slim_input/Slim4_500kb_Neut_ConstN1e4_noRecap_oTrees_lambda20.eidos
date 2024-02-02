@@ -1,0 +1,27 @@
+// lambda==20
+
+initialize() { 
+    initializeTreeSeq();
+	initializeMutationRate(2.5e-7);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+    // initializeMutationType("m2", var_h , "f", var_s*20 );
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 499999);
+    initializeRecombinationRate(2e-7);
+}
+
+1 late() { 
+	defineConstant("simID", getSeed()); // get seed in case of re-run
+	sim.addSubpop("p1", 500); 
+}
+
+
+// end of burn-in, output samples
+
+5000 late() {
+    // write out trees
+    sim.treeSeqOutput("./500kb_Neut_ConstN/trees/Neut_ConstN_rep"+ var_rep + ".trees");
+
+    // output samples
+	p1.outputMSSample(sample_size) ;
+}

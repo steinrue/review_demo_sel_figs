@@ -1,0 +1,61 @@
+// lambda==20
+
+initialize() { 
+    initializeTreeSeq(simplificationRatio=INF);
+	initializeMutationRate(2.5e-7);
+	initializeMutationType("m1", 0.5, "f", 0.0);
+    initializeMutationType("m2", var_h , "f", var_s*20 );
+	initializeGenomicElementType("g1", m1, 1.0);
+	initializeGenomicElement(g1, 0, 499999);
+    initializeRecombinationRate(2e-7);
+}
+
+1 late() { 
+	defineConstant("simID", getSeed()); // get seed in case of re-run
+	sim.addSubpop("p1", 500); 
+}
+
+
+// end of burn-in, record state, introduce mutation
+
+5000 late() {
+    // save the state of the simulation
+    // sim.outputFull("slim_temp" + simID + ".txt");
+    sim.treeSeqOutput("slim_temp" + simID + ".trees");
+
+    // introduce mutation at the center
+    target = sample(p1.genomes, 1);
+    target.addNewDrawnMutation(m2, 250000);
+    sim.outputMutations(sim.mutationsOfType(m2));   
+}
+
+// write output whenever it's reaches var_freq
+5001:10000 late() {
+	mut = sim.mutationsOfType(m2);
+
+	// restart if lost
+	if (size(mut) == 0){
+        sim.outputMutations(sim.mutationsOfType(m2));
+        sim.readFromPopulationFile("slim_temp" + simID + ".trees");
+
+        setSeed(getSeed() + 1);
+        cat("Mutation lost. Restarting simulation with seed "+ getSeed() +"\n");
+        target = sample(p1.genomes, 1);
+        target.addNewDrawnMutation(m2,250000);
+	} 
+	else if (sim.mutationFrequencies(NULL, mut) >= var_freq ){
+        sim.outputMutations(sim.mutationsOfType(m2));
+
+    	cat("Mutation reached frequency " + var_freq + " at generation " + sim.cycle + ". Writing output and terminating simulation.\n");
+
+	    // write out trees
+	    sim.treeSeqOutput("./500kb_" + var_cond + "_ConstN/trees/" + var_cond + "_ConstN_rep"+ var_rep + ".trees");
+
+	    // output MS samples
+		p1.outputMSSample(sample_size * 2) ;
+
+		// terminate simulation
+		sim.simulationFinished();
+	}
+
+}
